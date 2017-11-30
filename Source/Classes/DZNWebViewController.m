@@ -10,6 +10,7 @@
 
 #import "DZNWebViewController.h"
 #import "DZNPolyActivity.h"
+#import "Reachability.h"
 
 #define DZN_IS_IPAD [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad
 #define DZN_IS_LANDSCAPE ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationLandscapeLeft || [UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationLandscapeRight)
@@ -32,6 +33,8 @@ static char DZNWebViewControllerKVOContext = 0;
 @property (nonatomic, weak) UIView *navigationBarSuperView;
 
 @property (nonatomic) BOOL completedInitialLoad;
+
+@property (strong, nonatomic) Reachability *reachability;
 
 @end
 
@@ -86,6 +89,9 @@ static char DZNWebViewControllerKVOContext = 0;
     
     [self.webView addObserver:self forKeyPath:@"loading" options:NSKeyValueObservingOptionNew context:&DZNWebViewControllerKVOContext];
     self.completedInitialLoad = NO;
+    
+    self.reachability = [Reachability reachabilityForInternetConnection];
+    [self.reachability startNotifier];
 }
 
 
@@ -119,6 +125,8 @@ static char DZNWebViewControllerKVOContext = 0;
     if (!self.webView.URL) {
         [self loadURL:self.URL];
     }
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reachabilityChanged:) name:kReachabilityChangedNotification object:nil];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -136,6 +144,7 @@ static char DZNWebViewControllerKVOContext = 0;
 	[super viewWillDisappear:animated];
     
     [self clearProgressViewAnimated:animated];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:kReachabilityChangedNotification object:nil];
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -711,6 +720,17 @@ static char DZNWebViewControllerKVOContext = 0;
 }
 
 
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    if (error.code == -1009) {
+        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"No Internet connection." message:@"Please make sure you are connected to the internet to view this page." preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+        [alertController addAction:action];
+        [self presentViewController:alertController animated:YES completion:nil];
+    }
+}
+
+
+
 #pragma mark - WKUIDelegate methods
 
 - (DZNWebView *)webView:(DZNWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures
@@ -898,5 +918,45 @@ static char DZNWebViewControllerKVOContext = 0;
     _webView = nil;
     _URL = nil;
 }
+
+
+#pragma mark - Reachability Check
+
+- (BOOL)isDeviceConnectedToInternet {
+    NetworkStatus netStatus = [self.reachability currentReachabilityStatus];
+    return netStatus != NotReachable;
+}
+
+
+- (void)reachabilityChanged:(NSNotification *)notification {
+    NSLog(@"Reachi changed");
+    Reachability *reachability = (Reachability *)[notification object];
+    switch (reachability.currentReachabilityStatus) {
+        case NotReachable:
+            
+            break;
+        case ReachableViaWiFi:
+        {
+            //If the initial page failed to load, the webView.URL will be null -> we want to automatically reload
+            NSURL *url = self.webView.URL;
+            if (!url) {
+                [self loadURL:self.URL];
+            }
+            break;
+        }
+        case ReachableViaWWAN:
+        {
+            //If the initial page failed to load, the webView.URL will be null -> we want to automatically reload
+            NSURL *url = self.webView.URL;
+            if (!url) {
+                [self loadURL:self.URL];
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 
 @end
