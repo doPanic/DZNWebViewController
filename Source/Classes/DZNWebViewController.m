@@ -10,7 +10,7 @@
 
 #import "DZNWebViewController.h"
 #import "DZNPolyActivity.h"
-#import "Reachability.h"
+#import "VFReachability.h"
 
 #define DZN_IS_IPAD [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad
 #define DZN_IS_LANDSCAPE ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationLandscapeLeft || [UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationLandscapeRight)
@@ -34,7 +34,7 @@ static char DZNWebViewControllerKVOContext = 0;
 
 @property (nonatomic) BOOL completedInitialLoad;
 
-@property (strong, nonatomic) Reachability *reachability;
+@property (strong, nonatomic) VFReachability *reachability;
 
 @end
 
@@ -90,7 +90,7 @@ static char DZNWebViewControllerKVOContext = 0;
     [self.webView addObserver:self forKeyPath:@"loading" options:NSKeyValueObservingOptionNew context:&DZNWebViewControllerKVOContext];
     self.completedInitialLoad = NO;
     
-    self.reachability = [Reachability reachabilityForInternetConnection];
+    self.reachability = [VFReachability reachabilityForInternetConnection];
     [self.reachability startNotifier];
 }
 
@@ -930,7 +930,7 @@ static char DZNWebViewControllerKVOContext = 0;
 
 - (void)reachabilityChanged:(NSNotification *)notification {
     NSLog(@"Reachi changed");
-    Reachability *reachability = (Reachability *)[notification object];
+    VFReachability *reachability = (VFReachability *)[notification object];
     switch (reachability.currentReachabilityStatus) {
         case NotReachable:
             
